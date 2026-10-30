@@ -1,0 +1,32 @@
+# Runs the PostgreSQL database and the Django backend together
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    # Reads POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD from .env (same values Django uses)
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Backend waits until the database is ready to accept connections
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Django REST API + Django Admin on http://localhost:8000
+  backend:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Keeps images/videos uploaded through Django Admin
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  media_data:
